@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const instance = axios.create({
-  baseURL: "https://food-sharing-resource-app.onrender.com"
+  baseURL: "https://food-sharing-resource-app.onrender.com/api"
 });
 
 instance.interceptors.request.use(config => {
