@@ -2,7 +2,7 @@ import axios from "axios";
 import { getToken } from './token';
 
 const instance = axios.create({
-  baseURL: "http://localhost:5000/api"
+  baseURL: "https://food-sharing-resource-app.onrender.com/api"
 });
 
 instance.interceptors.request.use(config => {
