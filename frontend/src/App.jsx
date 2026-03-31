@@ -9,6 +9,8 @@ import Requests from "./pages/Requests";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import ResetPassword from "./pages/ResetPassword";
+import Profile from "./pages/Profile";
+import ItemDetails from "./pages/ItemDetails";
 
 function App() {
   return (
@@ -45,6 +47,17 @@ function App() {
         />
 
         <Route
+          path="/items/:id"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <ItemDetails />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/add-item"
           element={
             <ProtectedRoute>
@@ -72,6 +85,16 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <Requests />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Profile />
               </Layout>
             </ProtectedRoute>
           }

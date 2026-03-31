@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "../api/axios";
+import { useAuth } from '../context/AuthContext';
 
 export default function ItemCard({ item }) {
   const [loading, setLoading] = useState(false);
@@ -7,7 +8,7 @@ export default function ItemCard({ item }) {
   const [isFavorite, setIsFavorite] = useState(item.isFavorite);
   const [boosting, setBoosting] = useState(false);
 
-  const user = JSON.parse(localStorage.getItem("user"));
+  const { user } = useAuth();
   const ownerId = typeof item.owner === 'string' ? item.owner : item.owner?._id;
   const isOwner = user?.id === ownerId;
 

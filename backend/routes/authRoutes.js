@@ -2,11 +2,18 @@ const router = require("express").Router();
 const { register, login, forgotPassword, resetPassword } = require("../controllers/authController");
 const passport = require('../passport');
 const jwt = require('jsonwebtoken');
+const auth = require('../middleware/authMiddleware');
 
 router.post("/register", register);
 router.post("/login", login);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+router.get('/me', auth, async (req, res) => {
+  const User = require('../models/User');
+  const user = await User.findById(req.user.id).select('-password -resetPasswordToken -resetPasswordExpires');
+  if (!user) return res.status(404).json({ msg: 'User not found' });
+  res.json(user);
+});
 
 // Google OAuth - only enable when credentials are configured
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {

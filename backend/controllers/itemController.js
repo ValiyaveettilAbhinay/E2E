@@ -58,7 +58,8 @@ const getItems = async (req, res) => {
     const items = await Item.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(Number(limit));
+      .limit(Number(limit))
+      .populate('owner', 'name email');
 
     const total = await Item.countDocuments(query);
 
@@ -68,6 +69,22 @@ const getItems = async (req, res) => {
     const itemsWithStatus = await Promise.all(items.map(async (item) => {
       let userRequestStatus = null;
       let isFavorite = false;
+      let ownerName = 'Anonymous';
+
+      // determine ownerName robustly
+      if (item.owner) {
+        if (typeof item.owner === 'object') {
+          ownerName = item.owner.name || item.owner.email || 'Anonymous';
+        } else {
+          // owner stored as id string - try to load the user
+          try {
+            const u = await User.findById(item.owner).select('name email');
+            ownerName = u ? (u.name || u.email || 'Anonymous') : 'Anonymous';
+          } catch (e) {
+            ownerName = 'Anonymous';
+          }
+        }
+      }
 
       if (userId) {
         const existingRequest = await Request.findOne({ 
@@ -83,7 +100,8 @@ const getItems = async (req, res) => {
       return {
         ...item._doc,
         userRequestStatus, // 'pending', 'approved', 'rejected', or null
-        isFavorite
+        isFavorite,
+        ownerName
       };
     }));
 
@@ -94,12 +112,56 @@ const getItems = async (req, res) => {
   }
 };
 
-// RECOMMENDED ITEMS (Unchanged)
-const getRecommendedItems = async (req, res) => {
-  const user = await User.findById(req.user.id);
-  const items = await Item.find({ status: "available" });
-  const recommended = recommendItems(items, user);
-  res.json(recommended);
+// GET SINGLE ITEM BY ID (populates owner and includes current user's request/favorite status)
+const getItemById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const item = await Item.findById(id).populate('owner', 'name email');
+    if (!item) return res.status(404).json({ msg: 'Item not found' });
+
+    const userId = req.user ? req.user.id : null;
+    let userRequestStatus = null;
+    let isFavorite = false;
+    let ownerName = 'Anonymous';
+
+    if (item.owner) {
+      if (typeof item.owner === 'object') ownerName = item.owner.name || item.owner.email || 'Anonymous';
+      else {
+        const u = await User.findById(item.owner).select('name email');
+        ownerName = u ? (u.name || u.email || 'Anonymous') : 'Anonymous';
+      }
+    }
+
+    if (userId) {
+      const existingRequest = await Request.findOne({ item: item._id, requester: userId });
+      if (existingRequest) userRequestStatus = existingRequest.status;
+
+      const user = await User.findById(userId);
+      if (user) isFavorite = user.favorites.some(f => f.toString() === item._id.toString());
+    }
+
+    res.json({ ...item._doc, userRequestStatus, isFavorite, ownerName });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: 'Server error' });
+  }
 };
 
-module.exports = { createItem, getItems, getRecommendedItems };
+// RECOMMENDED ITEMS (allow optional ?location= to provide desired location)
+const getRecommendedItems = async (req, res) => {
+  try {
+    const locationQuery = req.query.location;
+    const user = req.user ? await User.findById(req.user.id) : null;
+    // build a minimal 'user-like' object for recommendItems
+    const userContext = { location: locationQuery || (user ? user.location : undefined) };
+
+    const items = await Item.find({ status: "available" });
+    const recommended = recommendItems(items, userContext);
+    res.json({ items: recommended });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: 'Server error' });
+  }
+};
+
+module.exports = { createItem, getItems, getRecommendedItems, getItemById };

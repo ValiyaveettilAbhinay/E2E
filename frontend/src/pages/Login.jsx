@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import axios from "../api/axios";
+import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -12,11 +13,13 @@ export default function Login() {
   const [resetStatus, setResetStatus] = useState("");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { login: authLogin } = useAuth();
 
   useEffect(() => {
     const token = searchParams.get('token');
     if (token) {
-      localStorage.setItem('token', token);
+      // use AuthContext login so all tabs get notified and user is fetched
+      authLogin(token);
       navigate('/dashboard');
     }
     // eslint-disable-next-line
@@ -28,7 +31,8 @@ export default function Login() {
     setError(""); 
     try {
       const res = await axios.post("/auth/login", { email, password });
-      localStorage.setItem("token", res.data.token);
+      // use AuthContext to set token and notify other tabs
+      authLogin(res.data.token);
       navigate("/dashboard"); 
     } catch (err) {
       setError(err.response?.data?.message || err.response?.data?.msg || "Invalid credentials");

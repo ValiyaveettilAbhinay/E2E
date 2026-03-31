@@ -1,19 +1,29 @@
 import { Link, useNavigate } from "react-router-dom";
 import React, { useEffect, useState } from "react";
 import axios from "../api/axios";
+import { useAuth } from "../context/AuthContext";
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
+  const { logout, token, loading, user } = useAuth();
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
+    logout();
     navigate("/login"); 
   };
 
   useEffect(() => {
-    axios.get('/dashboard').then(res => setData(res.data)).catch(() => setData(null));
-  }, []);
+    if (loading) return; // wait for auth to finish
+    if (!token) {
+      setData(null);
+      return;
+    }
+
+    let mounted = true;
+    axios.get('/dashboard').then(res => { if (mounted) setData(res.data); }).catch(() => { if (mounted) setData(null); });
+    return () => { mounted = false; };
+  }, [token, loading]);
 
   return (
     <div className="min-h-screen premium-gradient p-6 lg:p-12">
@@ -25,14 +35,27 @@ export default function Dashboard() {
             <h1 className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-500">
               Dashboard
             </h1>
-            <p className="text-slate-400 mt-2 font-medium">Welcome back to the sharing community.</p>
+            <p className="text-slate-400 mt-2 font-medium">{user ? `Welcome back, ${user.name}` : 'Welcome back to the sharing community.'}</p>
           </div>
-          <button 
-            className="px-6 py-2 rounded-full border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white transition-all text-sm font-semibold"
-            onClick={handleLogout}
-          >
-            Logout
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/profile')}
+              title="View profile"
+              className="w-10 h-10 rounded-full bg-slate-800/50 flex items-center justify-center hover:bg-slate-800 transition"
+            >
+              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z" fill="currentColor" />
+                <path d="M4 20c0-3.31 4.03-6 8-6s8 2.69 8 6v1H4v-1z" fill="currentColor" opacity="0.9" />
+              </svg>
+            </button>
+
+            <button 
+              className="px-6 py-2 rounded-full border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white transition-all text-sm font-semibold"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
+          </div>
         </header>
 
         {/* Action Grid */}

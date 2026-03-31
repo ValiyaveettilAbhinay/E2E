@@ -19,11 +19,13 @@ const upload = multer({ storage });
 const {
   createItem,
   getItems,
-  getRecommendedItems
+  getRecommendedItems,
+  getItemById
 } = require("../controllers/itemController");
 
 // public listing - optional auth
 router.get("/", optionalAuth, getItems);
+router.get("/:id", optionalAuth, getItemById);
 router.post("/", auth, upload.single('image'), createItem);
 router.get("/recommend", auth, getRecommendedItems);
 

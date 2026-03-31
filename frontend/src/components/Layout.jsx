@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import React, { useEffect, useState } from "react";
 import axios from "../api/axios";
+import { useAuth } from "../context/AuthContext";
 
 export default function Layout({ children }) {
   const { pathname } = useLocation();
@@ -9,6 +10,7 @@ export default function Layout({ children }) {
   const [incomingPreview, setIncomingPreview] = useState([]);
   const [outgoingPreview, setOutgoingPreview] = useState([]);
   const [loadingReq, setLoadingReq] = useState(false);
+  const { user, logout } = useAuth();
 
   const linkClass = path =>
     `block px-3 py-2 rounded-lg transition-colors duration-200 ease-in-out text-sm font-medium ${
@@ -59,30 +61,16 @@ export default function Layout({ children }) {
           </div>
           <div>
             <h1 className="text-lg font-extrabold leading-tight">Food and Resource Sharing</h1>
+            <div className="text-sm text-slate-200 mt-1">{user ? `Hello, ${user.name}` : 'Welcome'}</div>
             <div className="text-xs text-slate-400">Share · Reuse · Rediscover</div>
           </div>
         </div>
 
         <nav className="space-y-2 mb-4">
-          <Link className={`flex items-center gap-3 ${pathname === '/dashboard' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-300 hover:text-white hover:bg-slate-800'} px-3 py-2 rounded-lg`} to="/dashboard">
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zM13 21h8V11h-8v10zm0-18v6h8V3h-8z" fill="currentColor"/></svg>
-            <span className="text-sm font-medium">Dashboard</span>
-          </Link>
-
-          <Link className={`flex items-center gap-3 ${pathname === '/items' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-300 hover:text-white hover:bg-slate-800'} px-3 py-2 rounded-lg`} to="/items">
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none"><path d="M21 16V8l-9-5-9 5v8l9 5 9-5z" fill="currentColor"/></svg>
-            <span className="text-sm font-medium">Items</span>
-          </Link>
-
-          <Link className={`flex items-center gap-3 ${pathname === '/add-item' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-300 hover:text-white hover:bg-slate-800'} px-3 py-2 rounded-lg`} to="/add-item">
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none"><path d="M11 11V3h2v8h8v2h-8v8h-2v-8H3v-2h8z" fill="currentColor"/></svg>
-            <span className="text-sm font-medium">Add Item</span>
-          </Link>
-
-          <Link className={`flex items-center gap-3 ${pathname === '/recommend' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-300 hover:text-white hover:bg-slate-800'} px-3 py-2 rounded-lg`} to="/recommend">
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.39 6.99H21l-5.19 3.76L17.39 22 12 17.77 6.61 22l1.58-7.25L3 8.99h6.61L12 2z" fill="currentColor"/></svg>
-            <span className="text-sm font-medium">Recommended</span>
-          </Link>
+          <Link className={linkClass("/dashboard")} to="/dashboard">Dashboard</Link>
+          <Link className={linkClass("/items")} to="/items">Items</Link>
+          <Link className={linkClass("/add-item")} to="/add-item">Add Item</Link>
+          <Link className={linkClass("/recommend")} to="/recommend">Recommended</Link>
         </nav>
 
         {/* Requests box with counts and small preview */}
@@ -97,10 +85,19 @@ export default function Layout({ children }) {
                 <div className="text-xs text-slate-400">Incoming • Outgoing</div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button onClick={loadRequests} title="Refresh" className="text-slate-300 hover:text-white p-2 rounded-md bg-slate-800/40 hover:bg-slate-800/60">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none"><path d="M21 10v6h-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 14v-6h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 10a9 9 0 10-3.2 6.8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </button>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <button onClick={loadRequests} title="Refresh requests" aria-label="Refresh requests" className={`w-10 h-10 rounded-full flex items-center justify-center ${loadingReq ? 'bg-slate-700' : 'bg-slate-800/40'} hover:bg-slate-800 transform hover:scale-105 transition ring-offset-2 focus:outline-none focus:ring-2 focus:ring-indigo-500`}>
+                  {/* improved circular refresh icon */}
+                  <svg className={`w-5 h-5 text-slate-200 ${loadingReq ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M21 12a9 9 0 10-2.64 6.01" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M21 3v6h-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                {incomingCount > 0 && !loadingReq && (
+                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-5 h-5 text-xs rounded-full bg-rose-500 text-white shadow">{incomingCount}</span>
+                )}
+              </div>
               <Link to="/requests" className="text-indigo-300 text-sm font-semibold">Manage</Link>
             </div>
           </div>
@@ -121,38 +118,18 @@ export default function Layout({ children }) {
             </div>
           </div>
 
-          {/* small previews */}
-          <div className="mt-3 text-xs text-slate-300 space-y-2">
-            {incomingPreview.length > 0 && (
-              <div className="mb-2">
-                <div className="text-xs text-slate-300 font-semibold">New Requests</div>
-                {incomingPreview.map(r => (
-                  <div key={r._id} className="truncate flex items-center gap-2 p-2 rounded hover:bg-slate-800/50 transition-all">
-                    <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-xs">{(r.requester.name || r.requester.email || '?')[0].toUpperCase()}</div>
-                    <div className="flex-1 truncate">{r.requester.name || r.requester.email} <span className="text-slate-400">→</span> <span className="font-semibold">{r.item.title || r.item.name}</span></div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {outgoingPreview.length > 0 && (
-              <div>
-                <div className="text-xs text-slate-300 font-semibold">Your Requests</div>
-                {outgoingPreview.map(r => (
-                  <div key={r._id} className="truncate flex items-center gap-2 p-2 rounded hover:bg-slate-800/50 transition-all">
-                    <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-xs">{(r.item.title || r.item.name || '?')[0].toUpperCase()}</div>
-                    <div className="flex-1 truncate">{r.item.title || r.item.name} — <span className="text-slate-400 font-semibold">{r.status}</span></div>
-                  </div>
-                ))}
-              </div>
-            )}
+          {/* Compact footer instead of detailed previews */}
+          <div className="mt-4 text-xs text-slate-400">
+            <div className="flex items-center justify-between">
+              <div>Quick overview — open Manage for details</div>
+              <Link to="/requests" className="text-indigo-300 text-sm font-semibold">Open</Link>
+            </div>
           </div>
         </div>
 
         <button
           onClick={() => {
-            localStorage.removeItem("token");
-            window.location.href = "/login";
+            logout();
           }}
           className="mt-auto text-left text-rose-400 hover:text-rose-300 flex items-center gap-2"
         >

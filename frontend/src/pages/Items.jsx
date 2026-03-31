@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import axios from "../api/axios";
-import { Link } from "react-router-dom";
-import ItemCard from "../components/ItemCard"; // 1. Import the component we updated
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Items() {
   const [itemsData, setItemsData] = useState({ items: [], page: 1, total: 0, pages: 0 });
-  const [loading, setLoading] = useState(true); // 2. Add loading state
+  const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("");
+  const navigate = useNavigate();
 
   const fetchItems = async (page = 1) => {
     setLoading(true);
@@ -27,14 +27,36 @@ export default function Items() {
     }
   };
 
+  // Quick search: if exactly one strong match, open details; otherwise display results
+  const searchAndOpen = async () => {
+    if (!q) return fetchItems(1);
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.append('q', q);
+      params.append('limit', 50);
+      if (category && category !== 'all') params.append('category', category);
+      const res = await axios.get(`/items?${params.toString()}`);
+      const data = res.data.items || [];
+      if (data.length === 1) {
+        navigate(`/items/${data[0]._id}`);
+        return;
+      }
+      // otherwise show filtered results in the list view
+      setItemsData({ items: data, page: 1, total: data.length, pages: 1 });
+    } catch (err) {
+      console.error('Quick search failed', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchItems();
     // eslint-disable-next-line
   }, []);
 
-  // Re-fetch when category changes so filters apply immediately
   useEffect(() => {
-    // don't auto-fetch on initial render if you prefer; this runs after mount too but that's fine
     fetchItems(1);
     // eslint-disable-next-line
   }, [category]);
@@ -51,29 +73,37 @@ export default function Items() {
         </Link>
       </div>
 
-      <div className="mb-6 flex gap-3 items-center">
-        <input
-          value={q}
-          onChange={e => setQ(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') fetchItems(1); }}
-          placeholder="Search by name or description"
-          className="input flex-1 h-11"
-        />
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          <input
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') searchAndOpen(); }}
+            placeholder="Search by name or description"
+            className="w-full h-12 px-4 rounded-lg bg-slate-800 text-white placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500"
+          />
+          {q && (
+            <button onClick={() => { setQ(''); fetchItems(1); }} title="Clear" className="h-10 w-10 rounded-md bg-slate-700 text-slate-200 hover:bg-slate-600 flex items-center justify-center">×</button>
+          )}
+        </div>
 
         <select
           value={category}
           onChange={e => setCategory(e.target.value)}
-          className="input w-40 h-11"
+          className="h-12 w-48 px-3 rounded-lg bg-slate-800 text-white"
         >
-          <option value="all">All Categories</option>
-          <option value="Food">Food</option>
-          <option value="Clothing">Clothing</option>
-          <option value="Household">Household</option>
-          <option value="Other">Other</option>
+          <option value="all">All categories</option>
+          <option value="Food">Food & Groceries</option>
+          <option value="Clothing">Clothing & Accessories</option>
+          <option value="Household">Household items</option>
+          <option value="Other">Other / Misc</option>
         </select>
 
-        <button className="button h-11 flex items-center justify-center px-4" onClick={() => fetchItems(1)}>Search</button>
-        <Link to="/recommend" className="button h-11 flex items-center justify-center px-4">Recommended</Link>
+        <div className="flex gap-2">
+          <button className="h-12 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500" onClick={() => fetchItems(1)}>Search</button>
+          <button className="h-12 px-4 rounded-lg bg-indigo-500 hover:bg-indigo-400" onClick={searchAndOpen}>Find</button>
+          <Link to="/recommend" className="h-12 px-4 rounded-lg bg-slate-700 hover:bg-slate-600 flex items-center justify-center">Recommended</Link>
+        </div>
       </div>
 
       {loading ? (
@@ -87,11 +117,30 @@ export default function Items() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {/* List view: show full description, donor, pickup location and acceptance/status */}
+          <div className="space-y-6">
             {itemsData.items.map(item => (
-              <div key={item._id}>
-                {/* Ensure the item name/title is visible in the list — ItemCard already shows it */}
-                <ItemCard item={item} />
+              <div key={item._id} className="p-6 bg-gradient-to-br from-slate-900/40 to-slate-800/20 border border-slate-700 rounded-lg">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-slate-100">{item.title || item.name}</h3>
+                    <div className="mt-2 text-slate-300 whitespace-pre-wrap">{item.description || 'No description provided.'}</div>
+
+                    <div className="mt-3 text-sm text-slate-400 flex gap-6">
+                      <div>Donor: <span className="text-slate-100 font-semibold">{item.ownerName || (typeof item.owner === 'string' ? item.owner : (item.owner && (item.owner.name || item.owner.email))) || 'Anonymous'}</span></div>
+                      <div>Pickup: <span className="text-slate-100 font-semibold">{item.location || 'Not specified'}</span></div>
+                      <div>Quantity: <span className="text-slate-100 font-semibold">{item.quantity ?? 1}</span></div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-3">
+                    <div className={`px-3 py-1 rounded-full text-sm font-semibold ${item.userRequestStatus ? (item.userRequestStatus.toLowerCase() === 'pending' ? 'bg-yellow-400 text-black' : item.userRequestStatus.toLowerCase() === 'approved' ? 'bg-green-600 text-white' : 'bg-slate-600 text-white') : (item.status === 'available' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white')}`}>
+                      {(item.userRequestStatus || item.status || '').toUpperCase()}
+                    </div>
+
+                    <Link to={`/items/${item._id}`} className="text-indigo-300 text-sm font-medium hover:underline">View details</Link>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
