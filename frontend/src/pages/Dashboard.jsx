@@ -31,11 +31,14 @@ export default function Dashboard() {
         
         {/* Header Section */}
         <header className="flex justify-between items-center mb-12">
-          <div>
-            <h1 className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-500">
-              Dashboard
-            </h1>
-            <p className="text-slate-400 mt-2 font-medium">{user ? `Welcome back, ${user.name}` : 'Welcome back to the sharing community.'}</p>
+          <div className="flex items-center gap-4">
+            <img src="/logo.png" alt="App logo" className="w-16 h-16 rounded-md object-contain bg-white/5 p-1" />
+            <div>
+              <h1 className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-500">
+                Dashboard
+              </h1>
+              <p className="text-slate-400 mt-2 font-medium">{user ? `Welcome back, ${user.name}` : 'Welcome back to the sharing community.'}</p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <button

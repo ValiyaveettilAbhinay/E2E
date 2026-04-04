@@ -1,4 +1,6 @@
 const User = require('../models/User');
+const Item = require('../models/Item');
+const Request = require('../models/Request');
 
 exports.addFavorite = async (req, res) => {
   const userId = req.user.id;
@@ -27,4 +29,19 @@ exports.removeFavorite = async (req, res) => {
   await user.save();
 
   res.json({ msg: 'Removed from favorites' });
+};
+
+exports.getMyItems = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const donated = await Item.find({ owner: userId }).sort({ createdAt: -1 });
+
+    const approvedRequests = await Request.find({ requester: userId, status: 'approved' }).populate('item');
+    const received = approvedRequests.map(r => r.item).filter(Boolean);
+
+    res.json({ donated, received });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ msg: 'Server error' });
+  }
 };

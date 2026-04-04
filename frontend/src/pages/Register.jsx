@@ -5,6 +5,7 @@ import axios from "../api/axios";
 export default function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -14,7 +15,7 @@ export default function Register() {
     setLoading(true);
     try {
       setError(""); 
-      await axios.post("/auth/register", { name, email, password });
+      await axios.post("/auth/register", { name, email, password, phone });
       navigate("/login");
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed");
@@ -31,6 +32,7 @@ export default function Register() {
     <div className="min-h-screen premium-gradient flex items-center justify-center px-4 py-12">
       <div className="glass-card w-full max-w-md p-10 border-t-white/20">
         <div className="text-center mb-10">
+          <img src="/logo.png" alt="App logo" className="mx-auto w-24 h-24 mb-4 object-contain" />
           <h2 className="page-title">Join Us</h2>
           <p className="text-slate-400 font-medium">Start your journey today</p>
         </div>
@@ -61,6 +63,17 @@ export default function Register() {
               className="input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-400 uppercase ml-1">Phone</label>
+            <input
+              type="tel"
+              placeholder="Mobile number"
+              className="input"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
             />
           </div>
 

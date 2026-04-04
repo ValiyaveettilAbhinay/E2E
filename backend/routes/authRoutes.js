@@ -15,6 +15,12 @@ router.get('/me', auth, async (req, res) => {
   res.json(user);
 });
 
+// allow user to update their profile
+router.put('/me', auth, async (req, res) => {
+  const handler = require('../controllers/authController').updateMe;
+  return handler(req, res);
+});
+
 // Google OAuth - only enable when credentials are configured
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));

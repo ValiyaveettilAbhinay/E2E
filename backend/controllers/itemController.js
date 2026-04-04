@@ -23,6 +23,25 @@ const createItem = async (req, res) => {
       owner: req.user.id
     };
 
+    // prefer the phone provided by the frontend; otherwise fall back to the owner's registered phone
+    if (incoming.contactPhone) {
+      data.contactPhone = incoming.contactPhone;
+    } else {
+      try {
+        const owner = await User.findById(req.user.id).select('phone');
+        if (owner && owner.phone) data.contactPhone = owner.phone;
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // enforce contact phone presence
+    if (!data.contactPhone) return res.status(400).json({ msg: 'Contact phone is required when posting an item' });
+
+    // compute and store a normalized groupKey so similar items can be identified
+    const normalize = (s) => (s || '').toString().toLowerCase().replace(/[^\w\s]/g, '').trim();
+    data.groupKey = `${normalize(data.title)}||${normalize(data.location)}||${normalize(data.category)}`;
+
     if (req.file) {
       data.image = `/uploads/${req.file.filename}`; // assuming static serving
     }
@@ -60,6 +79,9 @@ const getItems = async (req, res) => {
       .skip(skip)
       .limit(Number(limit))
       .populate('owner', 'name email');
+
+    // If items have a groupKey, we can also include it in the response for client-side grouping
+    // (no change needed here because groupKey is part of item._doc)
 
     const total = await Item.countDocuments(query);
 

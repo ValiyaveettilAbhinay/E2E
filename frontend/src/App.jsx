@@ -11,6 +11,8 @@ import Layout from "./components/Layout";
 import ResetPassword from "./pages/ResetPassword";
 import Profile from "./pages/Profile";
 import ItemDetails from "./pages/ItemDetails";
+import ProfileEdit from "./pages/ProfileEdit";
+import MyItems from "./pages/MyItems";
 
 function App() {
   return (
@@ -41,6 +43,17 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <Items />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/my-items"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <MyItems />
               </Layout>
             </ProtectedRoute>
           }
@@ -95,6 +108,16 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <Profile />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile/edit"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <ProfileEdit />
               </Layout>
             </ProtectedRoute>
           }

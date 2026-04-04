@@ -17,10 +17,15 @@ const sendEmail = async ({ to, subject, text }) => {
 };
 
 exports.register = async (req, res) => {
-  const { name, email, password, location } = req.body;
-  const hash = await bcrypt.hash(password, 10);
-  await User.create({ name, email, password: hash, location });
-  res.json({ message: "Registered" });
+  try {
+    const { name, email, password, location, phone } = req.body;
+    const hash = await bcrypt.hash(password, 10);
+    await User.create({ name, email, password: hash, location, phone });
+    res.json({ message: "Registered" });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ msg: 'Server error' });
+  }
 };
 
 exports.login = async (req, res) => {
@@ -70,4 +75,27 @@ exports.resetPassword = async (req, res) => {
   await user.save();
 
   res.json({ msg: 'Password reset successful' });
+};
+
+// New: update current user's profile (name, location, phone)
+exports.updateMe = async (req, res) => {
+  try {
+    const { name, location, phone } = req.body;
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ msg: 'User not found' });
+
+    if (name !== undefined) user.name = name;
+    if (location !== undefined) user.location = location;
+    if (phone !== undefined) user.phone = phone;
+
+    await user.save();
+    const safe = user.toObject();
+    delete safe.password;
+    delete safe.resetPasswordToken;
+    delete safe.resetPasswordExpires;
+    res.json(safe);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ msg: 'Server error' });
+  }
 };

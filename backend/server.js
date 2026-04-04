@@ -26,6 +26,7 @@ app.use("/api/items", require("./routes/itemRoutes"));
 app.use("/api/requests", require("./routes/requestRoutes"));
 app.use("/api/dashboard", require("./routes/dashboardRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
+app.use("/api/user", require("./routes/userRoutes"));
 
 // schedule monthly reset at 00:05 on the first day of each month
 cron.schedule('5 0 1 * *', () => {

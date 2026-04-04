@@ -82,9 +82,17 @@ exports.getIncomingRequests = async (req, res) => {
 
     const requests = await Request.find({ item: { $in: itemIds }, status: 'pending' })
       .sort({ createdAt: 1 })
-      .populate('item requester');
+      .populate('item')
+      .populate('requester', 'name email phone');
 
-    res.json(requests);
+    // attach owner's phone to item in the response if available
+    const enhanced = requests.map(r => {
+      const it = r.item ? r.item.toObject() : null;
+      if (it && it.contactPhone) it.ownerPhone = it.contactPhone;
+      return { ...r.toObject(), item: it };
+    });
+
+    res.json(enhanced);
   } catch (err) {
     console.error(err);
     res.status(500).json({ msg: 'Server error' });
@@ -166,10 +174,93 @@ exports.rejectRequest = async (req, res) => {
   res.json({ msg: 'Request rejected' });
 };
 
+function maskPhone(p) {
+  if (!p) return null;
+  const s = String(p);
+  if (s.length <= 4) return '****';
+  if (s.length <= 6) return s.slice(0,1) + '****' + s.slice(-1);
+  // show first 3 and last 2
+  return s.slice(0,3) + '•••' + s.slice(-2);
+}
+
 // View my requests
 exports.getMyRequests = async (req, res) => {
-  const requests = await Request.find({ requester: req.user.id })
-    .populate("item");
+  try {
+    const requests = await Request.find({ requester: req.user.id }).populate({ path: 'item', populate: { path: 'owner', select: 'phone name email' } });
 
-  res.json(requests);
+    const enhanced = requests.map(r => {
+      const obj = r.toObject();
+      const it = obj.item || null;
+      if (it) {
+        // only reveal full owner phone if the request was approved
+        if (obj.status === 'approved' || obj.revealApproved) {
+          it.ownerPhone = it.contactPhone || null;
+        } else {
+          it.maskedPhone = maskPhone(it.contactPhone);
+        }
+      }
+      return obj;
+    });
+
+    res.json(enhanced);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ msg: 'Server error' });
+  }
+};
+
+// Requester asks the owner to reveal their phone for a given request
+exports.requestReveal = async (req, res) => {
+  try {
+    const { requestId } = req.body;
+    const request = await Request.findById(requestId).populate('item requester');
+    if (!request) return res.status(404).json({ msg: 'Request not found' });
+    if (request.requester.toString() !== req.user.id) return res.status(403).json({ msg: 'Not authorized' });
+
+    request.revealRequested = true;
+    await request.save();
+
+    // notify owner by email (best-effort)
+    try {
+      const owner = await User.findById(request.item.owner);
+      if (owner && owner.email) {
+        await sendEmail({ to: owner.email, subject: 'Phone reveal requested', text: `A requester (${request.requester.email || request.requester._id}) asked you to reveal your phone number for item ${request.item.title || request.item._id}.` });
+      }
+    } catch (e) { console.error('Email failed', e); }
+
+    res.json(request);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ msg: 'Server error' });
+  }
+};
+
+// Owner approves revealing their phone to the requester
+exports.approveReveal = async (req, res) => {
+  try {
+    const { requestId } = req.body;
+    const request = await Request.findById(requestId).populate('item requester');
+    if (!request) return res.status(404).json({ msg: 'Request not found' });
+
+    const item = await Item.findById(request.item._id || request.item).populate('owner');
+    if (!item) return res.status(404).json({ msg: 'Item not found' });
+    if (item.owner.toString() !== req.user.id) return res.status(403).json({ msg: 'Not authorized' });
+
+    request.revealApproved = true;
+    await request.save();
+
+    // notify requester with the owner's phone (best-effort)
+    try {
+      const requester = await User.findById(request.requester);
+      const ownerPhone = item.contactPhone || (item.owner && item.owner.phone) || null;
+      if (requester && requester.email) {
+        await sendEmail({ to: requester.email, subject: 'Phone revealed', text: `The owner has approved revealing their phone for item ${item.title || item._id}. Contact: ${ownerPhone || 'Not available'}` });
+      }
+    } catch (e) { console.error('Email failed', e); }
+
+    res.json(request);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ msg: 'Server error' });
+  }
 };
